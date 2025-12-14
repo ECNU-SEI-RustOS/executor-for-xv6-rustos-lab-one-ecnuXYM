@@ -20,8 +20,8 @@ use super::PROC_MANAGER;
 use super::cpu::CPU_MANAGER;
 use super::{fork_ret, Context, TrapFrame};
 
-use self::syscall::Syscall;
 
+use self::syscall::{Syscall, SYSCALL_NAMES};
 mod syscall;
 mod elf;
 
@@ -533,6 +533,24 @@ impl Proc {
             Ok(ret) => ret,
             Err(()) => -1isize as usize,
         };
+        // 确保 SYSCALL_NAMES 已被引入：use super::syscall::SYSCALL_NAMES;
+        let syscall_ret = tf.a0; // 系统调用的返回值
+        let syscall_num = a7;    // 系统调用的编号
+
+        // 获取 trace_mask 和 PID
+        let (trace_mask, pid) = {
+            let guard = self.excl.lock();
+            let pd = unsafe { self.data.get().as_ref().unwrap() };
+            (pd.trace_mask, guard.pid)
+        };
+
+        // 检查是否需要追踪
+        if syscall_num < SYSCALL_NAMES.len() as usize &&
+            (trace_mask & (1 << syscall_num)) != 0 {
+
+            let name = SYSCALL_NAMES[syscall_num];
+            println!("{}: syscall {} -> {}", pid, name, syscall_ret);
+        }
     }
 
     /// # 功能说明
