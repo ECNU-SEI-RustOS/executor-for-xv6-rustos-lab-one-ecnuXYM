@@ -540,15 +540,18 @@ impl Proc {
         // 获取 trace_mask 和 PID
         let (trace_mask, pid) = {
             let guard = self.excl.lock();
+            // 访问 ProcData 需要 unsafe，这里简化为获取只读引用
             let pd = unsafe { self.data.get().as_ref().unwrap() };
             (pd.trace_mask, guard.pid)
         };
 
         // 检查是否需要追踪
+        // 1 << syscall_num: 将 1 左移 n 位，用于创建掩码
         if syscall_num < SYSCALL_NAMES.len() as usize &&
             (trace_mask & (1 << syscall_num)) != 0 {
 
             let name = SYSCALL_NAMES[syscall_num];
+            // 打印追踪信息：PID: syscall name -> return_value
             println!("{}: syscall {} -> {}", pid, name, syscall_ret);
         }
     }
