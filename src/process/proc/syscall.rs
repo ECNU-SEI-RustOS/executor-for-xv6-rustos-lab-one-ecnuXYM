@@ -39,6 +39,7 @@ pub trait Syscall {
     fn sys_link(&mut self) -> SysResult;
     fn sys_mkdir(&mut self) -> SysResult;
     fn sys_close(&mut self) -> SysResult;
+    fn sys_trace(&mut self) -> SysResult; // <--- 新增
 }
 
 impl Syscall for Proc {
@@ -162,6 +163,7 @@ impl Syscall for Proc {
                 },
             }
             if uarg == 0 {
+
                 match elf::load(self, &path, &argv[..i]) {
                     Ok(ret) => result = Ok(ret),
                     Err(s) => error = s,
@@ -496,6 +498,20 @@ impl Syscall for Proc {
         println!("[{}].close(fd={}), file={:?}", self.excl.lock().pid, fd, file);
 
         drop(file);
+        Ok(0)
+    }
+    /// Set the current process's system call trace mask.
+    fn sys_trace(&mut self) -> SysResult {
+        // 获取第一个参数 (mask)
+        let mask = self.arg_raw(0);
+
+        // 将 mask 存储到当前进程的 ProcData.trace_mask 字段
+        let pd = unsafe { self.data.get_mut() };
+        pd.trace_mask = mask as u32;
+
+        #[cfg(feature = "trace_syscall")]
+        println!("[{}].trace(mask={:#x}) = 0", self.excl.lock().pid, mask);
+
         Ok(0)
     }
 }

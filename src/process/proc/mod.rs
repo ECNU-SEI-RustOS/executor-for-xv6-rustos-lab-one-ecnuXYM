@@ -102,6 +102,8 @@ pub struct ProcData {
     pub pagetable: Option<Box<PageTable>>,
     /// 进程当前工作目录的 inode。
     pub cwd: Option<Inode>,
+
+    pub trace_mask: u32, // 新增：用于存储系统调用追踪掩码
 }
 
 
@@ -116,6 +118,8 @@ impl ProcData {
             tf: ptr::null_mut(),
             pagetable: None,
             cwd: None,
+            // 确保在这里添加 trace_mask 的初始化
+            trace_mask: 0, // <--- 新增
         }
     }
 
@@ -520,6 +524,7 @@ impl Proc {
             19 => self.sys_link(),
             20 => self.sys_mkdir(),
             21 => self.sys_close(),
+            22 => self.sys_trace(), // <--- 新增
             _ => {
                 panic!("unknown syscall num: {}", a7);
             }
@@ -687,7 +692,11 @@ impl Proc {
         // clone opened files and cwd
         cdata.open_files.clone_from(&pdata.open_files);
         cdata.cwd.clone_from(&pdata.cwd);
-        
+
+        // VVVVVV  --- 实验要求新增：复制 trace_mask  --- VVVVVV
+        cdata.trace_mask = pdata.trace_mask; // <--- 关键修改
+        // ^^^^^^  --- 实验要求新增：复制 trace_mask  --- ^^^^^^
+
         // copy process name
         cdata.name.copy_from_slice(&pdata.name);
 
