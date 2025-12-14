@@ -556,7 +556,6 @@ impl Proc {
         // }
         if syscall_num < SYSCALL_NAMES.len() as usize &&
             (trace_mask & (1 << syscall_num)) != 0 {
-
             let name = SYSCALL_NAMES[syscall_num];
             let syscall_ret_usize = syscall_ret; // 当前是 usize
 
@@ -566,6 +565,7 @@ impl Proc {
             // 打印追踪信息：PID: syscall name -> return_value
             println!("{}: syscall {} -> {}", pid, name, ret_signed);
             // ^^^^^^ 关键修改：使用 ret_signed ^^^^^^
+        }
     }
 
     /// # 功能说明
