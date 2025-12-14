@@ -547,13 +547,25 @@ impl Proc {
 
         // 检查是否需要追踪
         // 1 << syscall_num: 将 1 左移 n 位，用于创建掩码
+        // if syscall_num < SYSCALL_NAMES.len() as usize &&
+        //     (trace_mask & (1 << syscall_num)) != 0 {
+        //
+        //     let name = SYSCALL_NAMES[syscall_num];
+        //     // 打印追踪信息：PID: syscall name -> return_value
+        //     println!("{}: syscall {} -> {}", pid, name, syscall_ret);
+        // }
         if syscall_num < SYSCALL_NAMES.len() as usize &&
             (trace_mask & (1 << syscall_num)) != 0 {
 
             let name = SYSCALL_NAMES[syscall_num];
+            let syscall_ret_usize = syscall_ret; // 当前是 usize
+
+            // VVVVVV 关键修改：转换为有符号整数打印 VVVVVV
+            let ret_signed = syscall_ret_usize as isize;
+
             // 打印追踪信息：PID: syscall name -> return_value
-            println!("{}: syscall {} -> {}", pid, name, syscall_ret);
-        }
+            println!("{}: syscall {} -> {}", pid, name, ret_signed);
+            // ^^^^^^ 关键修改：使用 ret_signed ^^^^^^
     }
 
     /// # 功能说明
