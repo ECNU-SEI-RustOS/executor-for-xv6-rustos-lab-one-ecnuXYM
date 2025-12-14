@@ -14,6 +14,33 @@ use crate::trap;
 
 use super::{Proc, elf};
 
+// 根据您提供的 syscall.h 编号定义
+pub const SYSCALL_NAMES: [&'static str; 23] = [
+    "unused",      // 0: 未使用
+    "fork",        // 1: SYS_fork
+    "exit",        // 2: SYS_exit
+    "wait",        // 3: SYS_wait
+    "pipe",        // 4: SYS_pipe
+    "read",        // 5: SYS_read
+    "kill",        // 6: SYS_kill
+    "exec",        // 7: SYS_exec
+    "fstat",       // 8: SYS_fstat
+    "chdir",       // 9: SYS_chdir
+    "dup",         // 10: SYS_dup
+    "getpid",      // 11: SYS_getpid
+    "sbrk",        // 12: SYS_sbrk
+    "sleep",       // 13: SYS_sleep
+    "uptime",      // 14: SYS_uptime
+    "open",        // 15: SYS_open
+    "write",       // 16: SYS_write
+    "mknod",       // 17: SYS_mknod
+    "unlink",      // 18: SYS_unlink
+    "link",        // 19: SYS_link
+    "mkdir",       // 20: SYS_mkdir
+    "close",       // 21: SYS_close
+    "trace",       // 22: SYS_trace <-- 新增
+];
+
 pub type SysResult = Result<usize, ()>;
 
 
