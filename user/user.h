@@ -23,6 +23,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int trace(int mask); // 新添加的函数声明
 
 // ulib.c
 int stat(const char*, struct stat*);
