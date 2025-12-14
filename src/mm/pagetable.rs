@@ -341,7 +341,7 @@ impl PageTable {
     /// 与 [walk_addr] 功能相同，
     /// 但返回的物理地址指向的数据可以被修改。
     pub fn walk_addr_mut(&mut self, va: VirtAddr)
-        -> Result<PhysAddr, &'static str>
+                         -> Result<PhysAddr, &'static str>
     {
         match self.walk_mut(va) {
             Some(pte) => {
@@ -382,7 +382,7 @@ impl PageTable {
     /// - 调用者需保证 `va` 是合法的虚拟地址，避免频繁错误调用。  
     /// - 函数不修改页表，适合查询用途，线程安全。
     pub fn walk_addr(&self, va: VirtAddr)
-        -> Result<PhysAddr, &'static str>
+                     -> Result<PhysAddr, &'static str>
     {
         match self.walk(va) {
             Some(pte) => {
@@ -474,7 +474,7 @@ impl PageTable {
         self.uvm_unmap(TRAPFRAME.into(), 1, false);
         // free physical memory
         if proc_size > 0 {
-            self.uvm_unmap(0, pg_round_up(proc_size)/PGSIZE, true);
+            self.uvm_unmap(0, pg_round_up(proc_size) / PGSIZE, true);
         }
     }
 
@@ -504,7 +504,7 @@ impl PageTable {
         if code.len() >= PGSIZE {
             panic!("initcode more than a page");
         }
- 
+
         let mem = unsafe { RawSinglePage::new_zeroed() as *mut u8 };
         self.map_pages(
             VirtAddr::from(USERTEXT),
@@ -555,8 +555,8 @@ impl PageTable {
                 Ok(mem) => {
                     match self.map_pages(
                         unsafe { VirtAddr::from_raw(cur_size) },
-                        PGSIZE, 
-                        unsafe { PhysAddr::from_raw(mem as usize) }, 
+                        PGSIZE,
+                        unsafe { PhysAddr::from_raw(mem as usize) },
                         PteFlag::R | PteFlag::W | PteFlag::X | PteFlag::U
                     ) {
                         Err(s) => {
@@ -642,9 +642,9 @@ impl PageTable {
             panic!("va not page aligned");
         }
 
-        for ca in (va..(va+PGSIZE*count)).step_by(PGSIZE) {
-            let pte = self.walk_mut(unsafe {VirtAddr::from_raw(ca)})
-                                        .expect("unable to find va available");
+        for ca in (va..(va + PGSIZE * count)).step_by(PGSIZE) {
+            let pte = self.walk_mut(unsafe { VirtAddr::from_raw(ca) })
+                .expect("unable to find va available");
             if !pte.is_valid() {
                 panic!("this pte is not valid");
             }
@@ -679,7 +679,7 @@ impl PageTable {
     /// - 该操作影响用户态访问权限，错误使用可能导致用户程序异常或安全问题。
     pub fn uvm_clear(&mut self, va: usize) {
         let pte = self.walk_mut(VirtAddr::try_from(va).unwrap())
-                                                .expect("cannot find available pte");
+            .expect("cannot find available pte");
         pte.clear_user();
     }
 
@@ -714,13 +714,13 @@ impl PageTable {
             if let Ok(mem) = mem {
                 let perm = pte.read_perm();
                 if child_pgt.map_pages(va, PGSIZE,
-                    unsafe { PhysAddr::from_raw(mem as usize) }, perm).is_ok()
+                                       unsafe { PhysAddr::from_raw(mem as usize) }, perm).is_ok()
                 {
                     continue
                 }
                 unsafe { RawSinglePage::from_raw_and_drop(mem); }
             }
-            child_pgt.uvm_unmap(0, i/PGSIZE, true);
+            child_pgt.uvm_unmap(0, i / PGSIZE, true);
             return Err(())
         }
         Ok(())
@@ -749,7 +749,7 @@ impl PageTable {
     /// - 访问用户虚拟地址时，需防止越界和非法访问，避免内核崩溃。  
     /// - 该函数为只读操作，不修改用户内存，调用时线程安全。
     pub fn copy_in_str(&self, srcva: usize, dst: &mut [u8])
-        -> Result<(), &'static str>
+                       -> Result<(), &'static str>
     {
         let mut i: usize = 0;
         let mut va = VirtAddr::try_from(srcva)?;
@@ -765,7 +765,7 @@ impl PageTable {
                     .offset(distance as isize)
             };
             let mut va_ptr = va.as_ptr();
-            
+
             // iterate througn each u8 in a page
             let mut count = min(PGSIZE - distance, dst.len() - i);
             while count > 0 {
@@ -813,7 +813,7 @@ impl PageTable {
     /// - 目标地址必须是合法且映射的用户空间地址，否则可能引发内存安全问题。  
     /// - 该函数操作涉及内核与用户空间交互，调用时需确保上下文安全及同步。
     pub fn copy_out(&mut self, mut src: *const u8, mut dst: usize, mut count: usize)
-        -> Result<(), ()>
+                    -> Result<(), ()>
     {
         if count == 0 {
             return Ok(())
@@ -873,7 +873,7 @@ impl PageTable {
     /// - 调用者需保证 `dst` 指向有效内核内存且足够大以容纳复制内容。  
     /// - 函数不会修改用户空间数据，属于只读操作，调用时线程安全。
     pub fn copy_in(&self, mut src: usize, mut dst: *mut u8, mut count: usize)
-        -> Result<(), ()>
+                   -> Result<(), ()>
     {
         let mut va = VirtAddr::try_from(src).unwrap();
         va.pg_round_down();
@@ -913,6 +913,61 @@ impl PageTable {
             dst = unsafe { dst.offset(off_from_end as isize) };
             va.add_page();
             debug_assert_eq!(src, va.as_usize());
+        }
+    }
+
+    /// 获取当前 PageTable 结构体实例的物理页地址 (Physical Page Number)
+    ///
+    /// 假设 PageTable 结构体实例本身位于物理内存中，其地址即为页表基址。
+    pub fn ppn(&self) -> usize {
+        // 返回 PageTable 实例的裸指针，并转换为 usize (即物理地址)
+        // 注意：这里假设这个 PageTable 实例是在内核页表映射的物理地址中
+        self as *const PageTable as usize
+    }
+    // src/mm/pagetable.rs (在 impl PageTable { ... } 块内添加)
+
+    /// 递归打印页表内容
+    /// level: 当前页表的层级 (0, 1, 2)
+    pub fn vm_print(&self, level: usize) {
+        // 计算缩进前缀
+        let prefix = " ..".repeat(level);
+
+        // 遍历所有 512 个页表项
+        for (i, pte) in self.data.iter().enumerate() {
+            // 1. 检查有效位
+            if !pte.is_valid() {
+                continue;
+            }
+
+            // 获取 PTE 原始数据和物理地址
+            let pa = pte.as_phys_addr().as_usize();
+            let pte_value = pte.data;
+
+            // 打印当前 PTE 信息
+            // 格式: <prefix> <索引>: pte 0x<pte_value> pa 0x<pa_value>..
+            // 注意：这里需要确保格式严格匹配示例输出
+            println!("{}{} {}: pte 0x{:x} pa 0x{:x}..",
+                     prefix,
+                     // 由于 prefix 已经占用了前 level 个缩进，我们只需要在后面加空格
+                     if level > 0 { " " } else { "" }, // 避免顶层多一个空格
+                     i,
+                     pte_value,
+                     pa
+            );
+
+            // 2. 检查是否为中间页表项（非叶子节点）
+            // 如果不是叶子节点 (pte.is_leaf() 为 false)，则指向下一级页表，需要递归。
+            if !pte.is_leaf() {
+                // as_page_table 假设返回 *mut PageTable，需要转成引用
+                let next_pt_ptr = pte.as_page_table();
+
+                // 将裸指针转换为 PageTable 引用，并递归调用
+                if !next_pt_ptr.is_null() {
+                    let next_pt = unsafe { next_pt_ptr.as_ref().unwrap() };
+                    // 递归，层级 + 1
+                    next_pt.vm_print(level + 1);
+                }
+            }
         }
     }
 }

@@ -189,13 +189,45 @@ impl Syscall for Proc {
                     break
                 },
             }
+            // if uarg == 0 {
+            //
+            //     match elf::load(self, &path, &argv[..i]) {
+            //         Ok(ret) => result = Ok(ret),
+            //         Err(s) => error = s,
+            //     }
+            //     break
+            // }
+
             if uarg == 0 {
 
                 match elf::load(self, &path, &argv[..i]) {
-                    Ok(ret) => result = Ok(ret),
+                    Ok(ret) => {
+
+                        // VVVVVV  --- 附加题：打印页表逻辑  --- VVVVVV
+                        let guard = self.excl.lock();
+
+                        if guard.pid == 1 {
+                            // 访问 ProcData 需要 unsafe
+                            let data = unsafe { self.data.get().as_mut().unwrap() };
+
+                            // data.pagetable 是 Option<Box<PageTable>>
+                            let pt = data.pagetable.as_ref().unwrap();
+
+                            // 1. 打印页表起始行：严格匹配格式，注意结尾的 ".."
+                            // 使用 (*pt) 解引用 Box<PageTable>
+                            println!("page table 0x{:x}..", (*pt).ppn());
+
+                            // 2. 开始递归打印 PTE
+                            (*pt).vm_print(0);
+                        }
+                        drop(guard);
+                        // ^^^^^^  --- 附加题：打印页表逻辑  --- ^^^^^^
+
+                        result = Ok(ret);
+                    }
                     Err(s) => error = s,
                 }
-                break       
+                break
             }
 
             // allocate kernel space to copy in user arg
